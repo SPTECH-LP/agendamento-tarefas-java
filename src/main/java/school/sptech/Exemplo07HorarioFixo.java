@@ -4,11 +4,11 @@ import java.time.LocalTime;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
-public class Exemplo6HorarioFixo {
+public class Exemplo07HorarioFixo {
     public static void main(String[] args) {
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(3);
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-        // Passo 4: tarefa em horário fixo que se reagenda a cada execução.
+        // Passo 7: tarefa em horário fixo que se reagenda a cada execução.
         // Num sistema real seria LocalTime.of(8, 0); aqui usamos daqui a 5 segundos
         // para você ver a execução e o reagendamento sem esperar até amanhã.
         LocalTime horario = LocalTime.now().plusSeconds(5).withNano(0);

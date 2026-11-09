@@ -4,14 +4,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class Exemplo3FixedDelay {
+public class Exemplo04FixedDelay {
     public static void main(String[] args) {
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(3);
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-        // Passo 2.3 - scheduleWithFixedDelay(): intervalo contado do fim de uma execução ao início da próxima
+        // Passo 4 - scheduleWithFixedDelay(): intervalo contado do fim de uma execução ao início da próxima
         scheduler.scheduleWithFixedDelay(
                 new TarefaAgendada("Geração de relatório de vendas"),
-                1, 4, TimeUnit.SECONDS
+                1,
+                4,
+                TimeUnit.SECONDS
         );
 
         // A tarefa repete para sempre e o programa não termina sozinho.

@@ -4,17 +4,23 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class Exemplo4ComparandoRateEDelay {
+public class Exemplo05ComparandoRateEDelay {
     public static void main(String[] args) {
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+        // Passo 5: cada tarefa tem o seu próprio agendador de uma thread,
+        // para uma não atrasar a outra (o passo 8 mostra o que acontece se dividirem a thread)
+        ScheduledExecutorService schedulerRate =
+                Executors.newSingleThreadScheduledExecutor();
 
-        // Passo 2.4: as duas tarefas demoram 1 segundo e têm intervalo de 3 segundos.
+        ScheduledExecutorService schedulerDelay =
+                Executors.newSingleThreadScheduledExecutor();
+
+        // As duas tarefas demoram 1 segundo e têm intervalo de 3 segundos.
         // Compare os horários de início no console com o diagrama do README.
-        scheduler.scheduleAtFixedRate(
+        schedulerRate.scheduleAtFixedRate(
                 new TarefaDemorada("FixedRate ", 1000),
                 0, 3, TimeUnit.SECONDS
         );
-        scheduler.scheduleWithFixedDelay(
+        schedulerDelay.scheduleWithFixedDelay(
                 new TarefaDemorada("FixedDelay", 1000),
                 0, 3, TimeUnit.SECONDS
         );

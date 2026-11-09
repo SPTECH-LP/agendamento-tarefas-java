@@ -25,7 +25,9 @@ public class TarefaDiaria implements Runnable {
         }
 
         Duration espera = Duration.between(agora, proximaExecucao);
+
         System.out.println("Próxima execução: " + proximaExecucao);
+
         scheduler.schedule(this, espera.toMillis(), TimeUnit.MILLISECONDS);
     }
 

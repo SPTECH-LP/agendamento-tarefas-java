@@ -4,11 +4,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class Exemplo5ExcecaoNaTarefa {
+public class Exemplo06Excecao {
     public static void main(String[] args) {
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(3);
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
-        // Passo 3: sem try/catch, a primeira exceção cancela em silêncio todas as próximas execuções
+        // Passo 6: sem try/catch, a primeira exceção cancela em silêncio todas as próximas execuções
         scheduler.scheduleAtFixedRate(() -> {
             System.out.println("[sem try/catch] consultando o banco...");
             throw new RuntimeException("banco de dados fora do ar");
