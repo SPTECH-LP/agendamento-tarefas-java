@@ -1,4 +1,4 @@
-package school.sptech;
+package school.sptech.passo07;
 
 import java.time.Duration;
 import java.time.LocalDateTime;

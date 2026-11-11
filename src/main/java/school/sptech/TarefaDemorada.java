@@ -17,8 +17,7 @@ public class TarefaDemorada implements Runnable {
 
     @Override
     public void run() {
-        System.out.printf("[%s] %s: início (%s)%n",
-                LocalTime.now().format(FORMATO_HORA), nome, Thread.currentThread().getName());
+        imprimir("início");
         try {
             // Simula um trabalho que demora, como uma consulta pesada ao banco
             Thread.sleep(duracaoMillis);
@@ -26,7 +25,16 @@ public class TarefaDemorada implements Runnable {
             Thread.currentThread().interrupt();
             return;
         }
-        System.out.printf("[%s] %s: fim (%s)%n",
-                LocalTime.now().format(FORMATO_HORA), nome, Thread.currentThread().getName());
+        imprimir("fim");
+    }
+
+    private void imprimir(String etapa) {
+        String mensagem = "[%s] %s: %s (%s)".formatted(
+              LocalTime.now().format(FORMATO_HORA),
+              nome,
+              etapa,
+              Thread.currentThread().getName()
+        );
+        System.out.println(mensagem);
     }
 }

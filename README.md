@@ -10,20 +10,19 @@ Neste tutorial, vamos aprender a agendar tarefas em Java puro, sem utilizar fram
 usaremos o `ScheduledExecutorService`, que já faz parte do JDK.
 
 Vamos começar com uma tarefa simples, executada uma única vez, e adicionar novos recursos aos
-poucos. Ao longo do caminho, você vai aprender a repetir tarefas, definir horários específicos,
-tratar erros e trabalhar com múltiplas threads.
+poucos. Ao longo do caminho, você vai aprender a repetir tarefas, definir horários específicos e
+tratar erros.
 
 ## Antes de começar
 
 1. Clone o repositório.
 2. Abra o projeto no IntelliJ ou na IDE de sua preferência.
-3. Execute a classe `Exemplo01AEncerramentoManual` e acompanhe o console.
 
 Cada exemplo possui sua própria classe com um método `main`. Assim, você pode executar cada etapa
 separadamente e observar o comportamento no console.
 
 Os exemplos estão organizados em ordem numérica, de `Exemplo01AEncerramentoManual` até
-`Exemplo08BDuasThreads`. Os passos 1 e 8 possuem duas versões, identificadas pelas letras `A` e `B`.
+`Exemplo07HorarioFixo`. 
 
 > [!IMPORTANT]
 > A partir do passo 3, as tarefas começam a se repetir e o programa não termina sozinho. Isso é
@@ -31,7 +30,7 @@ Os exemplos estão organizados em ordem numérica, de `Exemplo01AEncerramentoMan
 >
 > Quando terminar de observar um exemplo, interrompa a execução:
 >
-> - **IntelliJ:** clique no botão **Stop** ou pressione `Ctrl+F2` (`Cmd+F2` no Mac).
+> - **IntelliJ:** clique no botão **Stop**.
 > - **Terminal:** pressione `Ctrl+C`.
 
 ## O que é agendar uma tarefa?
@@ -43,12 +42,6 @@ intervalos regulares.
 Pense no alarme do celular: você pode configurá-lo para tocar daqui a 10 minutos ou para despertar
 todos os dias no mesmo horário. Depois de configurado, não precisa fazer mais nada. O
 `ScheduledExecutorService` funciona de maneira parecida dentro de um programa Java.
-
-> [!NOTE]
-> Você pode encontrar exemplos que utilizam a classe `Timer`. Ela é uma alternativa mais antiga e
-> mais frágil: se uma tarefa lançar uma exceção não tratada, o `Timer` inteiro para e nenhuma outra
-> tarefa agendada nele volta a rodar. Neste tutorial, vamos utilizar o `ScheduledExecutorService`,
-> que não tem esse problema e oferece mais flexibilidade.
 
 ## Passo a passo
 
@@ -69,8 +62,9 @@ simples, que utiliza uma única thread:
 ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 ```
 
-Uma thread será suficiente para os exemplos até o passo 7. No passo 8, vamos observar o que
-acontece quando precisamos executar tarefas diferentes ao mesmo tempo.
+Uma thread será suficiente para todos os exemplos do passo a passo. Na seção
+[Extra](#extra), vamos observar o que acontece quando precisamos executar tarefas
+diferentes ao mesmo tempo.
 
 #### 1.2. Agende a tarefa
 
@@ -81,8 +75,9 @@ Para tarefas pequenas, podemos escrever esse código diretamente usando uma **la
 
 ```java
 scheduler.schedule(() -> {
-    System.out.println("Enviando e-mail de boas-vindas (thread: "
-            + Thread.currentThread().getName() + ")");
+    String mensagem = "Enviando e-mail de boas-vindas (thread: %s)"
+            .formatted(Thread.currentThread().getName());
+    System.out.println(mensagem);
 }, 2, TimeUnit.SECONDS);
 ```
 
@@ -106,7 +101,6 @@ agendador aguarda o momento certo.
 **Execute** a classe `Exemplo01AEncerramentoManual`. O console deve mostrar algo parecido com isto:
 
 ```text
-E-mail agendado para daqui a 2 segundos (thread: main)
 Fim do main.
 Enviando e-mail de boas-vindas (thread: pool-1-thread-1)
 ```
@@ -116,124 +110,58 @@ programa continua aberto.
 
 #### 1.3. Por que o programa não terminou?
 
-Em Java, o programa não é encerrado simplesmente porque o método `main` chegou ao fim. Ele continua
-funcionando enquanto houver threads ativas (mais precisamente, threads "não daemon", que é o tipo
-criado pelo agendador).
-
-No exemplo, temos duas threads:
-
-| Thread            | O que faz                                                                         |
-|-------------------|-----------------------------------------------------------------------------------|
-| `main`            | Executa o método principal e termina depois de imprimir as duas primeiras mensagens. |
-| `pool-1-thread-1` | Foi criada pelo agendador e executa o envio do e-mail.                            |
-
-Depois de executar a tarefa, a thread do agendador continua ativa e disponível para receber outras
-tarefas. Ela não sabe se o programa pretende agendar mais alguma coisa, então permanece aguardando.
-
-É como um funcionário que continua de plantão até alguém avisar que o expediente acabou. Para
-encerrar o agendador, precisamos avisá-lo explicitamente.
+Em Java, o programa só termina quando todas as threads acabam, e não apenas o `main`. A thread
+criada pelo agendador continua ativa, aguardando novas tarefas, até que alguém avise que ela não é
+mais necessária.
 
 #### 1.4. Encerre o agendador
 
 Para avisar que não queremos mais utilizar o agendador, chamamos `shutdown()`.
 
-No final da classe `Exemplo01AEncerramentoManual`, você encontrará um bloco de código comentado.
-Descomente-o:
+No final da classe `Exemplo01AEncerramentoManual`, você encontrará uma linha comentada.
+Descomente-a:
 
 ```java
 scheduler.shutdown();
-
-try {
-    if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-        scheduler.shutdownNow();
-    }
-} catch (InterruptedException e) {
-    scheduler.shutdownNow();
-    Thread.currentThread().interrupt();
-}
 ```
 
 Agora execute a classe novamente. O e-mail será enviado e, em seguida, o programa terminará.
 
-Vamos entender o papel de cada método:
+O `shutdown()` impede novos agendamentos, mas deixa terminar as tarefas únicas que já estavam
+programadas. Por isso, o e-mail ainda é enviado.
 
-| Método                                  | O que faz                                                                                                                                                                                         |
-|-----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `shutdown()`                            | Inicia o encerramento do agendador e impede novos agendamentos. Tarefas únicas que já estavam agendadas podem terminar normalmente. Por padrão, as próximas execuções de tarefas periódicas não continuam após o encerramento. |
-| `awaitTermination(5, TimeUnit.SECONDS)` | Aguarda o encerramento por até 5 segundos. Retorna `false` se o tempo acabar antes de o agendador terminar.                                                                                      |
-| `shutdownNow()`                         | Tenta interromper as tarefas em execução e impede que as tarefas que ainda não começaram sejam executadas.                                                                                       |
+#### 1.5. Uma alternativa: `try-with-resources`
 
-O e-mail ainda é enviado porque já estava agendado quando chamamos `shutdown()`. O método não
-cancela, por padrão, as tarefas de execução única que já estavam programadas.
-
-O `catch` trata uma situação diferente: a thread que está aguardando o encerramento também pode ser
-interrompida. Nesse caso, tentamos encerrar o agendador imediatamente e chamamos
-`Thread.currentThread().interrupt()` para preservar o sinal de interrupção.
-
-> [!NOTE]
-> `shutdownNow()` solicita a interrupção das tarefas, mas não garante que elas parem imediatamente.
-> Para responder à interrupção, o código da tarefa precisa cooperar com esse mecanismo.
-
-#### 1.5. Uma alternativa mais simples: `try`-with-resources
-
-O bloco de encerramento funciona, mas exige algumas linhas de código. Existe uma alternativa mais
-curta para situações em que sabemos que o agendador será utilizado por pouco tempo.
-
-Desde o Java 19, `ExecutorService` implementa `AutoCloseable`. Por isso, podemos utilizar o
-agendador com `try`-with-resources:
+Também podemos utilizar o agendador com `try-with-resources`:
 
 ```java
 try (ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor()) {
     scheduler.schedule(() -> {
-        System.out.println("Enviando e-mail de boas-vindas (thread: "
-                + Thread.currentThread().getName() + ")");
+        String mensagem = "Enviando e-mail de boas-vindas (thread: %s)"
+                .formatted(Thread.currentThread().getName());
+        System.out.println(mensagem);
     }, 2, TimeUnit.SECONDS);
-
-    System.out.println("E-mail agendado para daqui a 2 segundos (thread: "
-            + Thread.currentThread().getName() + ")");
-} // aqui o close() encerra o agendador
-
+}
 System.out.println("Fim do main.");
 ```
 
-Ao sair do bloco `try`, o Java chama `close()` automaticamente. Esse método inicia o encerramento
-do agendador e espera as tarefas terminarem. Diferentemente do exemplo anterior, não definimos um
-tempo máximo de espera.
+Ao sair do bloco `try`, o Java chama `close()` automaticamente. Esse método faz o `shutdown()` e
+espera as tarefas terminarem.
 
-**Execute** a classe `Exemplo01BTryWithResources`. O resultado será parecido com o exemplo anterior,
-mas repare na ordem: agora, a mensagem `Fim do main.` aparece depois do envio do e-mail.
-
-Isso acontece porque o `main` fica aguardando o encerramento do agendador ao sair do bloco `try`.
+**Execute** a classe `Exemplo01BTryWithResources`. Repare na ordem: agora, a mensagem
+`Fim do main.` aparece depois do envio do e-mail, porque o `main` fica aguardando o agendador
+terminar ao sair do bloco `try`.
 
 Use essa abordagem quando o trabalho do agendador tem começo e fim: por exemplo, uma tarefa única,
 um conjunto pequeno de tarefas ou um processamento em lote.
 
 > [!WARNING]
-> Não utilize `try`-with-resources quando o agendador precisa permanecer ativo durante toda a
-> execução da aplicação. Ao sair do bloco, o `close()` inicia o encerramento e as tarefas periódicas
+> Não utilize `try-with-resources` quando o agendador precisa permanecer ativo durante toda a
+> execução da aplicação. Ao sair do bloco, o `close()` encerra o agendador e as tarefas periódicas
 > deixam de continuar.
 >
 > Nos próximos exemplos, vamos trabalhar com tarefas que precisam se repetir. Por isso, o agendador
 > ficará ativo até o programa ser interrompido.
-
-#### 1.6. Quando preciso encerrar o agendador?
-
-O agendador não encerra suas threads automaticamente só porque terminou de executar uma tarefa.
-Precisamos definir quando ele deixou de ser necessário.
-
-Em geral, temos duas situações:
-
-| Situação                                                                                       | Como lidar                                                                                              |
-|------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| **O trabalho tem fim:** o programa agenda uma tarefa ou um lote de tarefas e depois precisa terminar. | Utilize `try`-with-resources.                                                                     |
-| **O agendador acompanha a aplicação:** tarefas que se repetem enquanto a aplicação está ligada, como num servidor. | Mantenha o agendador ativo e encerre-o apenas quando a aplicação for desligada.                  |
-
-Se criarmos um agendador temporário e não o encerrarmos, suas threads continuarão ativas sem
-necessidade.
-
-Nos exemplos a partir do passo 3, vamos seguir a segunda situação. Por isso, eles não encerram o
-agendador automaticamente. Quando terminar de observar cada exemplo, interrompa o programa pelo
-botão **Stop** da IDE ou pelo terminal.
 
 ---
 
@@ -248,8 +176,7 @@ método `run()` para imprimir o horário, o nome da tarefa e a thread responsáv
 ```java
 public class TarefaAgendada implements Runnable {
 
-    private static final DateTimeFormatter FORMATO_HORA =
-            DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private final String nome;
 
@@ -259,26 +186,20 @@ public class TarefaAgendada implements Runnable {
 
     @Override
     public void run() {
-        System.out.printf("[%s] %s (%s)%n",
+        String mensagem = "[%s] %s (%s)".formatted(
                 LocalTime.now().format(FORMATO_HORA),
                 nome,
-                Thread.currentThread().getName());
+                Thread.currentThread().getName()
+        );
+        System.out.println(mensagem);
     }
 }
 ```
 
 Para o agendador, não faz diferença se a tarefa foi criada com lambda ou com uma classe. Nos dois
-casos, ele recebe um `Runnable`.
-
-Veja as duas formas:
+casos, ele recebe um `Runnable`. Basta passar um objeto da classe no lugar da lambda:
 
 ```java
-// Com lambda: o código da tarefa fica direto na chamada
-scheduler.schedule(() -> {
-    System.out.println("Envio de e-mail de boas-vindas (feito com lambda)");
-}, 1, TimeUnit.SECONDS);
-
-// Com classe: o código fica no método run() de TarefaAgendada
 scheduler.schedule(
         new TarefaAgendada("Envio de e-mail de boas-vindas (feito com classe)"),
         2,
@@ -295,9 +216,8 @@ Qual forma escolher?
 
 Nos próximos passos, você verá as duas abordagens.
 
-**Execute** a classe `Exemplo02ClasseTarefa`. As duas tarefas serão executadas: a primeira depois de
-1 segundo e a segunda depois de 2 segundos. O programa termina sozinho porque o agendador foi
-criado com `try`-with-resources.
+**Execute** a classe `Exemplo02ClasseTarefa`. A tarefa será executada depois de 2 segundos e o
+programa terminará sozinho, porque o agendador foi criado com `try-with-resources`.
 
 ---
 
@@ -397,23 +317,8 @@ novamente. Por isso, os inícios acontecem nos segundos 0, 4 e 8.
 O exemplo `Exemplo05ComparandoRateEDelay` utiliza a classe `TarefaDemorada`, que usa
 `Thread.sleep()` para simular uma tarefa que demora 1 segundo.
 
-Para comparar os comportamentos sem que uma tarefa atrapalhe a outra, o exemplo cria dois
-agendadores:
-
-```java
-ScheduledExecutorService schedulerRate =
-        Executors.newSingleThreadScheduledExecutor();
-
-ScheduledExecutorService schedulerDelay =
-        Executors.newSingleThreadScheduledExecutor();
-```
-
-Se utilizássemos apenas um agendador com uma thread, as duas tarefas precisariam dividir a mesma
-thread. Enquanto uma estivesse executando, a outra teria que esperar. Isso alteraria os horários que
-queremos observar.
-
 **Execute** a classe `Exemplo05ComparandoRateEDelay` e compare os horários de início no console com
-o diagrama. Você também verá threads diferentes, uma para cada agendador.
+o diagrama.
 
 ---
 
@@ -590,20 +495,51 @@ ocorrência, no dia seguinte.
 | `schedule(this, ...)`              | A própria tarefa agenda sua próxima execução. Assim, cada execução deixa a seguinte programada.                                                                                                                  |
 | Reagendamento no `finally`         | Dessa forma, ele acontece mesmo quando a lógica da tarefa lança uma exceção que foi tratada.                                                                                                                     |
 | `isShutdown()`                     | Verifica se o agendador já iniciou seu encerramento. Isso evita tentar agendar uma nova execução depois que ele deixou de aceitar tarefas.                                                                       |
-| Encerramento                       | Como a tarefa sempre deixa uma execução única programada para o dia seguinte, um `shutdown()` sozinho (ou o `close()` do `try`-with-resources) ficaria esperando até lá. Na hora de desligar, use o bloco do passo 1.4: o `awaitTermination()` limita a espera e o `shutdownNow()` cancela o agendamento que ainda não começou. |
 | Fuso horário                       | Usamos `LocalDateTime` para manter o exemplo simples. Em aplicações que precisam respeitar um fuso horário específico, prefira trabalhar com `ZonedDateTime` e definir explicitamente a região, como `ZoneId.of("America/Sao_Paulo")`. |
-| Cron                               | O que construímos aqui é uma forma simples de agendar tarefas por horário. Ferramentas como o Spring, com `@Scheduled`, e o Quartz oferecem recursos mais completos, incluindo expressões cron.                  |
-
-> [!NOTE]
-> Este exemplo é didático. Em uma aplicação real, também é importante pensar no comportamento
-> durante o desligamento, em falhas de execução e na persistência dos agendamentos.
 
 ---
 
-### 8. Quando uma thread não é suficiente?
+## Experimente!
 
-Até aqui, todos os agendadores utilizaram uma única thread. Isso funcionou porque as tarefas eram
-rápidas ou porque não havia outras tarefas concorrendo pela mesma thread.
+Agora que você conhece os principais recursos do `ScheduledExecutorService`, que tal alterar alguns
+exemplos e observar o que acontece?
+
+Faça os testes abaixo. Depois de cada mudança, execute o projeto e acompanhe o console.
+
+1. No `Exemplo03FixedRate`, crie o agendador com `try-with-resources` e coloque o
+   `scheduleAtFixedRate()` dentro do bloco. Observe o que acontece quando o bloco termina e o
+   agendador é encerrado.
+2. No `Exemplo05ComparandoRateEDelay`, agende as duas tarefas no `schedulerRate` e remova o
+   `schedulerDelay`. Observe como uma tarefa interfere nos horários da outra.
+3. Ainda no `Exemplo05ComparandoRateEDelay`, aumente a duração da tarefa com
+   `scheduleAtFixedRate()` de `1000` para `5000` milissegundos. Compare os horários com o diagrama
+   do passo 5.
+4. No `Exemplo06Excecao`, mova o `throw` da tarefa que possui `try/catch` para depois do bloco
+   `catch`. Observe o que acontece com as próximas execuções.
+5. No `Exemplo07HorarioFixo`, troque o horário utilizado por `LocalTime.of(8, 0)` e confira a data e
+   o horário da próxima execução no console.
+
+## Limitações
+
+O `ScheduledExecutorService` é útil para agendar tarefas dentro de uma aplicação, mas existem
+algumas limitações que precisamos conhecer:
+
+| Limitação                              | O que significa                                                                                                                                                         |
+|----------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Os agendamentos ficam na memória**   | Se a aplicação for encerrada ou reiniciada, os agendamentos não são preservados. Eles precisam ser criados novamente quando a aplicação iniciar.                       |
+| **Não coordena diferentes instâncias** | Se a mesma aplicação estiver rodando em dois servidores, cada instância terá seu próprio agendador. Uma tarefa programada para as 8h poderá ser executada nos dois servidores. |
+| **Não oferece expressões cron**        | Regras como "dias úteis às 8h" ou "no primeiro dia do mês" precisam ser implementadas manualmente.                                                                     |
+
+Quando essas limitações se tornarem um problema, vale conhecer ferramentas mais completas, como o
+`@Scheduled` do Spring ou o Quartz. Elas oferecem recursos adicionais para trabalhar com
+agendamentos.
+
+## Extra
+
+### Quando uma thread não é suficiente?
+
+No passo a passo, todos os agendadores utilizaram uma única thread. Isso funcionou porque as
+tarefas eram rápidas ou porque não havia outras tarefas concorrendo pela mesma thread.
 
 Mas uma thread só executa uma tarefa por vez. Se uma tarefa demorar, as outras tarefas do mesmo
 agendador precisarão esperar.
@@ -632,7 +568,7 @@ scheduler.schedule(
 
 A diferença entre os exemplos está na quantidade de threads disponíveis no agendador.
 
-#### 8.1. Utilizando uma thread
+#### Utilizando uma thread
 
 **Execute** a classe `Exemplo08AUmaThread`. O console deve apresentar algo parecido com isto:
 
@@ -657,7 +593,7 @@ sequência, até que o agendador alcance novamente o ritmo programado.
 Em um sistema real, isso pode significar verificações importantes ficando atrasadas porque outra
 tarefa está ocupando a única thread disponível.
 
-#### 8.2. Utilizando duas threads
+#### Utilizando duas threads
 
 Para permitir que mais de uma tarefa seja executada ao mesmo tempo, podemos criar um agendador com
 um pool de threads.
@@ -692,7 +628,7 @@ Agora, o relatório é executado na `pool-1-thread-2`, enquanto a verificação 
 
 Como há duas threads disponíveis, uma tarefa não precisa esperar a outra terminar.
 
-#### 8.3. Quantas threads utilizar?
+#### Quantas threads utilizar?
 
 Não existe um número ideal para todos os cenários. A quantidade depende da duração das tarefas, do
 tipo de trabalho e de quantas execuções podem acontecer ao mesmo tempo.
@@ -705,47 +641,9 @@ Como ponto de partida:
 | **Mais de uma thread**    | Pode ser útil quando tarefas demoradas não devem bloquear outras tarefas.                                           |
 | **Cuidado com o excesso** | Cada thread consome recursos. Além disso, tarefas executadas ao mesmo tempo podem acessar os mesmos dados, exigindo atenção à concorrência. |
 
----
-
-## Experimente!
-
-Agora que você conhece os principais recursos do `ScheduledExecutorService`, que tal alterar alguns
-exemplos e observar o que acontece?
-
-Faça os testes abaixo. Depois de cada mudança, execute o projeto e acompanhe o console.
-
-1. No `Exemplo01AEncerramentoManual`, com o bloco de encerramento descomentado, troque o valor `5`
-   do `awaitTermination()` por `1`. O agendador aguardará menos tempo e poderá chamar
-   `shutdownNow()` antes de o e-mail ser enviado.
-2. No `Exemplo03FixedRate`, crie o agendador com `try`-with-resources e coloque o
-   `scheduleAtFixedRate()` dentro do bloco. Observe o que acontece quando o bloco termina e o
-   agendador é encerrado.
-3. No `Exemplo05ComparandoRateEDelay`, agende as duas tarefas no `schedulerRate` e remova o
-   `schedulerDelay`. Observe como uma tarefa interfere nos horários da outra.
-4. Ainda no `Exemplo05ComparandoRateEDelay`, aumente a duração da tarefa com
-   `scheduleAtFixedRate()` de `1000` para `5000` milissegundos. Compare os horários com o diagrama
-   do passo 5.
-5. No `Exemplo06Excecao`, mova o `throw` da tarefa que possui `try/catch` para depois do bloco
-   `catch`. Observe o que acontece com as próximas execuções.
-6. No `Exemplo07HorarioFixo`, troque o horário utilizado por `LocalTime.of(8, 0)` e confira a data e
-   o horário da próxima execução no console.
-7. No `Exemplo08AUmaThread`, aumente a duração do relatório de `4000` para `7000` milissegundos.
-   Observe quantas verificações ficam atrasadas enquanto o relatório está em execução.
-
-## Limitações
-
-O `ScheduledExecutorService` é útil para agendar tarefas dentro de uma aplicação, mas existem
-algumas limitações que precisamos conhecer:
-
-| Limitação                              | O que significa                                                                                                                                                         |
-|----------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Os agendamentos ficam na memória**   | Se a aplicação for encerrada ou reiniciada, os agendamentos não são preservados. Eles precisam ser criados novamente quando a aplicação iniciar.                       |
-| **Não coordena diferentes instâncias** | Se a mesma aplicação estiver rodando em dois servidores, cada instância terá seu próprio agendador. Uma tarefa programada para as 8h poderá ser executada nos dois servidores. |
-| **Não oferece expressões cron**        | Regras como "dias úteis às 8h" ou "no primeiro dia do mês" precisam ser implementadas manualmente.                                                                     |
-
-Quando essas limitações se tornarem um problema, vale conhecer ferramentas mais completas, como o
-`@Scheduled` do Spring ou o Quartz. Elas oferecem recursos adicionais para trabalhar com
-agendamentos.
+> [!TIP]
+> No `Exemplo08AUmaThread`, aumente a duração do relatório de `4000` para `7000` milissegundos e
+> observe quantas verificações ficam atrasadas enquanto o relatório está em execução.
 
 ## Documentação oficial
 
